@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama      
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+      - ./entrypoint.sh:/entrypoint.sh
+    networks:
+      - rag-network
+    restart: unless-stopped
+    entrypoint: ["/usr/bin/bash", "/entrypoint.sh"]
+    
+
+  rag-log-analyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-log-analyzer
+    ports:
+      - "8000:8000"
+    networks:
+      - rag-network
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LOGS_DIR=/logs
+
+volumes:
+  ollama-data:
+
+networks:
+  rag-network:
+    driver: bridge
