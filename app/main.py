@@ -7,8 +7,9 @@ from typing import List
 import os
 import requests
 
-from .embedder import Embedder
-from .faiss_store import FAISSStore
+from app.embedder import Embedder
+from app.faiss_store import FAISSStore
+from app.log_embedder import embed_logs_from_file
 #from .retriever import retrieve_relevant_chunks
 #from .responder import generate_response
 
@@ -35,31 +36,32 @@ def generate_embeddings(payload: dict):
 
 @app.post("/add")
 def add_log(req: EmbedRequest):
-    response = requests.post(embedder_url, json={"prompt": req.text})
-    vector = response.json()["embedding"]
+    embedding_result = embedder.embed_texts([req.text])
+    vector = embedding_result[0]
     faiss_store.add(vector, req.text)
     return {"status": "ok", "msg": "added"}
 
 @app.post("/search")
 def search_log(req: SearchRequest):
-    response = requests.post(embedder_url, json={"prompt": req.query})
-    query_vector = response.json()["embedding"]
+    embedding_result = embedder.embed_texts([req.query])
+    query_vector = embedding_result[0]
     results = faiss_store.search(query_vector, k=req.top_k)
     return {"matches": results}
 
-# @app.post("/upload_logs")
-# async def upload_logs(file: UploadFile = File(...)):
-#     file_location = os.path.join(LOGS_DIR, file.filename)
 
-#     with open(file_location, "wb") as f:
-#         f.write(await file.read())
+@app.post("/upload_logs")
+async def upload_logs(file: UploadFile = File(...)):
+    file_location = os.path.join(LOGS_DIR, file.filename)
 
-#     try:
-#         # Indexa logs no FAISS
-#         embed_logs(file_location)
-#         return {"message": f"File '{file.filename}' uploaded and indexed successfully."}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
+
+    try:
+        # Indexa logs no FAISS
+        embed_logs_from_file(file_location)
+        return {"message": f"File '{file.filename}' uploaded and indexed successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # @app.post("/query")
 # def query_logs(req: QueryRequest):

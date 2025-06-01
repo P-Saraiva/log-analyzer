@@ -26,6 +26,9 @@ services:
       - rag-network
     depends_on:
       - ollama
+    volumes:
+    - .:/app
+    #- ./logs:/logs
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - LOGS_DIR=/logs
